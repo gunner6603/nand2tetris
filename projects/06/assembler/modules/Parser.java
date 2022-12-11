@@ -82,6 +82,10 @@ public class Parser {
         return null;
     }
 
+    public void reset() {
+        cmdIterator = cmdLines.iterator();
+    }
+
     public static void main(String[] args) throws IOException {
         Parser parser = new Parser("Add.asm");
         while (parser.hasMoreCommands()) {
