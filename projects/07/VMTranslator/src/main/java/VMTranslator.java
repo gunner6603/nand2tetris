@@ -8,26 +8,25 @@ import java.io.IOException;
 public class VMTranslator {
 
     public static void main(String[] args) throws IOException {
-        String inputPath = "../StackArithmetic/SimpleAdd/SimpleAdd.vm";
+        String dirName = "MemoryAccess"; //StackArithmetic, MemoryAccess
+        String fileName = "BasicTest"; //SimpleAdd, StackTest, BasicTest, PointerTest, StaticTest
+        File inputPath = new File("../" + dirName + "/" + fileName + "/" + fileName + ".vm");
 
-
-        if (new File(inputPath).isDirectory()) { //not yet implemented block
-            String outputPath = inputPath + ".asm";
-            File dir = new File(inputPath);
-            File[] files = dir.listFiles(new FileFilter() {
+        if (inputPath.isDirectory()) { //not yet implemented block
+            File outputFile = new File(inputPath.getPath() + ".asm");
+            File dir = inputPath;
+            File[] inputFiles = dir.listFiles(new FileFilter() {
                 @Override
                 public boolean accept(File f) {
                     return f.isFile() && f.getName().endsWith(".vm");
                 }
             });
-            for (File file : files) {
-                System.out.println("file = " + file);
-            }
         } else {
-            String outputPath = inputPath.substring(0, inputPath.lastIndexOf(".")) + ".asm";
-            System.out.println("outputPath = " + outputPath);
-            Parser parser = new Parser(inputPath);
-            CodeWriter codeWriter = new CodeWriter(outputPath);
+            File inputFile = inputPath;
+            File outputFile = new File(inputPath.getPath().replaceAll("[.]vm$", ".asm"));
+            Parser parser = new Parser(inputFile);
+            CodeWriter codeWriter = new CodeWriter(outputFile);
+            codeWriter.setFileName(inputFile.getName().replace(".vm", ""));
 
             while (parser.hasMoreCommands()) {
                 parser.advance();
@@ -41,6 +40,7 @@ public class VMTranslator {
                         break;
                 }
             }
+
             codeWriter.close();
         }
     }

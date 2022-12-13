@@ -16,10 +16,9 @@ public class Parser {
     private Iterator<String> codeIterator;
     private String currentCodeLine;
 
-    public Parser(String filePath) throws IOException {
+    public Parser(File inputFile) throws IOException {
         codeLines = new ArrayList<>();
-        BufferedReader br = new BufferedReader(new FileReader(new File(filePath))
-        );
+        BufferedReader br = new BufferedReader(new FileReader(inputFile));
         String line = null;
 
         while ((line = br.readLine()) != null) {
