@@ -8,9 +8,7 @@ import java.io.IOException;
 public class VMTranslator {
 
     public static void main(String[] args) throws IOException {
-        String dirName = "MemoryAccess"; //StackArithmetic, MemoryAccess
-        String fileName = "BasicTest"; //SimpleAdd, StackTest, BasicTest, PointerTest, StaticTest
-        File inputPath = new File("../" + dirName + "/" + fileName + "/" + fileName + ".vm");
+        File inputPath = new File(args[0]);
 
         if (inputPath.isDirectory()) { //not yet implemented block
             File outputFile = new File(inputPath.getPath() + ".asm");
