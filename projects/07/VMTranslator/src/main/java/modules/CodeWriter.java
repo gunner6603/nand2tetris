@@ -9,7 +9,10 @@ public class CodeWriter {
 
     private BufferedWriter bw;
     private int labelCount = 0;
+    private int callCount = 0;
     private String fileName;
+    private String functionName;
+    private static final int SP_INIT = 256;
 
     public CodeWriter(File outputFile) throws IOException {
         bw = new BufferedWriter(new FileWriter(outputFile));
@@ -18,6 +21,7 @@ public class CodeWriter {
     public void setFileName(String fileName) {
         this.fileName = fileName;
     }
+
 
     public void writeArithmetic(String command) throws IOException { //add, sub, neg, eq, gt, lt, and, or, not
         String[] assemblyCodes = null;
@@ -315,6 +319,209 @@ public class CodeWriter {
         writeCodes(assemblyCodes);
     }
 
+    public void writeInit() throws IOException {
+        String[] assemblyCodes = new String[]{
+                "@" + SP_INIT,
+                "D=A",
+                "@SP",
+                "M=D"
+        };
+
+        writeCodes(assemblyCodes); //SP=256
+        writeCall("Sys.init", 0); //call Sys.init
+    }
+
+    public void writeLabel(String label) throws IOException {
+        String[] assemblyCodes = new String[]{
+            defineLabel(getFullLabel(label))
+        };
+        writeCodes(assemblyCodes);
+    }
+
+    public void writeGoto(String label) throws IOException {
+        String[] assemblyCodes = new String[]{
+                "@" + getFullLabel(label),
+                "0;JMP"
+        };
+        writeCodes(assemblyCodes);
+    }
+
+    public void writeIf(String label) throws IOException {
+        String[] assemblyCodes = new String[]{
+                "@SP",
+                "M=M-1",
+                "A=M",
+                "D=M",
+                "@" + getFullLabel(label),
+                "D;JNE"
+        };
+        writeCodes(assemblyCodes);
+    }
+
+    public void writeCall(String functionName, int numArgs) throws IOException {
+        String returnAddress = getNextReturnAddressLabel();
+        String[] assemblyCodes = new String[]{
+                //push return-address
+                "@" + returnAddress,
+                "D=A",
+                "@SP",
+                "A=M",
+                "M=D",
+                "@SP",
+                "M=M+1",
+                //push LCL
+                "@LCL",
+                "D=M",
+                "@SP",
+                "A=M",
+                "M=D",
+                "@SP",
+                "M=M+1",
+                //push ARG
+                "@ARG",
+                "D=M",
+                "@SP",
+                "A=M",
+                "M=D",
+                "@SP",
+                "M=M+1",
+                //push THIS
+                "@THIS",
+                "D=M",
+                "@SP",
+                "A=M",
+                "M=D",
+                "@SP",
+                "M=M+1",
+                //push THAT
+                "@THAT",
+                "D=M",
+                "@SP",
+                "A=M",
+                "M=D",
+                "@SP",
+                "M=M+1",
+                //ARG=SP-numArgs-5
+                "@SP",
+                "D=M",
+                "@" + (numArgs + 5),
+                "D=D-A",
+                "@ARG",
+                "M=D",
+                //LCL=SP
+                "@SP",
+                "D=M",
+                "@LCL",
+                "M=D",
+                //goto functionName
+                "@" + functionName,
+                "0;JMP",
+                //(return-address)
+                defineLabel(returnAddress)
+        };
+        writeCodes(assemblyCodes);
+    }
+
+    public void writeReturn() throws IOException {
+        String[] assemblyCodes = new String[]{
+                //FRAME = LCL
+                "@LCL",
+                "D=M",
+                "@R13",
+                "M=D",
+                //RET = *(FRAME-5)
+                "@R13",
+                "D=M",
+                "@5",
+                "A=D-A",
+                "D=M",
+                "@R14",
+                "M=D",
+                //*ARG = pop()
+                "@SP",
+                "M=M-1",
+                "A=M",
+                "D=M",
+                "@ARG",
+                "A=M",
+                "M=D",
+                //SP = ARG + 1
+                "@ARG",
+                "D=M+1",
+                "@SP",
+                "M=D",
+                //LCL = *(FRAME-4)
+                "@R13",
+                "D=M",
+                "@4",
+                "A=D-A",
+                "D=M",
+                "@LCL",
+                "M=D",
+                //ARG = *(FRAME-3)
+                "@R13",
+                "D=M",
+                "@3",
+                "A=D-A",
+                "D=M",
+                "@ARG",
+                "M=D",
+                //THIS = *(FRAME-2)
+                "@R13",
+                "D=M",
+                "@2",
+                "A=D-A",
+                "D=M",
+                "@THIS",
+                "M=D",
+                //THAT = *(FRAME-1)
+                "@R13",
+                "D=M",
+                "@1",
+                "A=D-A",
+                "D=M",
+                "@THAT",
+                "M=D",
+                //goto RET
+                "@R14",
+                "A=M",
+                "0;JMP"
+        };
+        writeCodes(assemblyCodes);
+    }
+
+    public void writeFunction(String functionName, int numLocals) throws IOException {
+        this.functionName = functionName;
+        String loop = getNextLabel();
+        String end = getNextLabel();
+        String[] assemblyCodes = new String[]{
+                //(functionName)
+                defineLabel(functionName),
+                //repeat numLocals times:
+                //  push 0
+                "@" + numLocals,
+                "D=A",
+                "@R13",
+                "M=D",             //tmp(R13)=numLocals
+                defineLabel(loop), //(LOOP)
+                "@R13",
+                "D=M",
+                "@" + end,
+                "D;JEQ",           //if tmp==0, goto END
+                "@SP",
+                "A=M",
+                "M=0",
+                "@SP",
+                "M=M+1",           //code for push 0
+                "@R13",
+                "M=M-1",           //tmp-=1
+                "@" + loop,
+                "0;JMP",           //goto LOOP
+                defineLabel(end)   //(END)
+        };
+        writeCodes(assemblyCodes);
+    }
+
     public void close() throws IOException {
         bw.flush();
         bw.close();
@@ -332,11 +539,21 @@ public class CodeWriter {
         return label;
     }
 
+    private String getNextReturnAddressLabel() {
+        String label = "RETURN_ADDRESS" + '$' + callCount;
+        callCount++;
+        return label;
+    }
+
     private String address(String label) {
         return "@" + label;
     }
 
     private String defineLabel(String label) {
         return "(" + label + ")";
+    }
+
+    private String getFullLabel(String label) {
+        return functionName + '$' + label;
     }
 }

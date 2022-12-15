@@ -19,27 +19,58 @@ public class VMTranslator {
                     return f.isFile() && f.getName().endsWith(".vm");
                 }
             });
-        } else {
-            File inputFile = inputPath;
-            File outputFile = new File(inputPath.getPath().replaceAll("[.]vm$", ".asm"));
-            Parser parser = new Parser(inputFile);
-            CodeWriter codeWriter = new CodeWriter(outputFile);
-            codeWriter.setFileName(inputFile.getName().replace(".vm", ""));
 
-            while (parser.hasMoreCommands()) {
-                parser.advance();
-                switch (parser.commandType()) {
-                    case ARITHMETIC:
-                        codeWriter.writeArithmetic(parser.arg1());
-                        break;
-                    case PUSH:
-                    case POP:
-                        codeWriter.writePushPop(parser.commandType(), parser.arg1(), parser.arg2());
-                        break;
-                }
+            CodeWriter codeWriter = new CodeWriter(outputFile);
+            codeWriter.writeInit();
+
+            for (File inputFile : inputFiles) {
+                translateAndWrite(inputFile, codeWriter);
             }
 
             codeWriter.close();
+
+        } else {
+            File inputFile = inputPath;
+            File outputFile = new File(inputPath.getPath().replaceAll("[.]vm$", ".asm"));
+            CodeWriter codeWriter = new CodeWriter(outputFile);
+            translateAndWrite(inputFile, codeWriter);
+            codeWriter.close();
+        }
+    }
+
+    private static void translateAndWrite(File inputFile, CodeWriter codeWriter) throws IOException {
+        Parser parser = new Parser(inputFile);
+        codeWriter.setFileName(inputFile.getName().replace(".vm", ""));
+
+        while (parser.hasMoreCommands()) {
+            parser.advance();
+            switch (parser.commandType()) {
+                case ARITHMETIC:
+                    codeWriter.writeArithmetic(parser.arg1());
+                    break;
+                case PUSH:
+                case POP:
+                    codeWriter.writePushPop(parser.commandType(), parser.arg1(), parser.arg2());
+                    break;
+                case LABEL:
+                    codeWriter.writeLabel(parser.arg1());
+                    break;
+                case GOTO:
+                    codeWriter.writeGoto(parser.arg1());
+                    break;
+                case IF:
+                    codeWriter.writeIf(parser.arg1());
+                    break;
+                case FUNCTION:
+                    codeWriter.writeFunction(parser.arg1(), parser.arg2());
+                    break;
+                case RETURN:
+                    codeWriter.writeReturn();
+                    break;
+                case CALL:
+                    codeWriter.writeCall(parser.arg1(), parser.arg2());
+                    break;
+            }
         }
     }
 }

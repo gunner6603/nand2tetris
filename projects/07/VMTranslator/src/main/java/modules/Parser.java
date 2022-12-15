@@ -22,11 +22,11 @@ public class Parser {
         String line = null;
 
         while ((line = br.readLine()) != null) {
-            line = line.strip().replaceAll("\\s+", " "); //remove redundant whitespace
             int commentIndex = line.indexOf("//");
             if (commentIndex != -1) {
                 line = line.substring(0, commentIndex); //remove comment
             }
+            line = line.strip().replaceAll("\\s+", " "); //remove redundant whitespace
             if (!line.isEmpty()) {
                 codeLines.add(line);
             }
